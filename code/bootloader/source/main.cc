@@ -6,12 +6,13 @@
 
 namespace becca::efi
 {
-    status (*Orig)(void* thiz, wchar_t* str) = nullptr;
+    status (*Orig)(void* thiz) = nullptr;
 
     extern "C"
     status Hook(void* thiz)
     {
-        return 0;
+        terminal::WriteLine("Hooked ClearScreen, not clearing screen >:D\n");
+        return 0; // Orig(thiz);
     }
 
     // Main entrypoint, initializes efilib
@@ -23,8 +24,11 @@ namespace becca::efi
 
         terminal::WriteLine("Hello World!");
 
-        void* test;
-        auto hookCtx = hooks::CreateTrampolineHook(systemTable->ConsoleOut->ClearScreen, Hook, reinterpret_cast<void**>(&Orig));
+        auto hookCtx = hooks::CreateTrampolineHook(
+            systemTable->ConsoleOut->ClearScreen,
+            Hook,
+            reinterpret_cast<void**>(&Orig)
+        );
         systemTable->ConsoleOut->ClearScreen(systemTable->ConsoleOut);
 
         terminal::WaitForAnyKey();

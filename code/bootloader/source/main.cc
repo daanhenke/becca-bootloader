@@ -1,17 +1,19 @@
 #include <becca/efi.hh>
 #include <becca/efi/terminal.hh>
 #include <becca/efi/alloc.hh>
+#include <becca/efi/fs.hh>
 
+#include <becca/efi/protocol/LoadedImage.hh>
 #include <becca/hooks.hh>
 
 namespace becca::efi
 {
-    status (*Orig)(void* thiz) = nullptr;
+    status (*Orig)(void* thiz, const wchar_t* thing) = nullptr;
 
     extern "C"
-    status Hook(void* thiz)
+    status Hook(void* thiz, const wchar_t* thing)
     {
-        terminal::WriteLine("Hooked ClearScreen, not clearing screen >:D\n");
+        return Orig(thiz, L"No logging for you!\r\n");
         return 0; // Orig(thiz);
     }
 
@@ -19,19 +21,28 @@ namespace becca::efi
     extern "C"
     status UefiMain(handle imageHandle, SystemTable* systemTable)
     {
-        terminal::Initialize(systemTable);
+        status result = 0;
+
+        if ((result = terminal::Initialize(systemTable)))
+        {
+            return result;
+        }
+
         alloc::Initialize(systemTable);
+
+        if ((result = fs::Initialize(imageHandle, systemTable)))
+        {
+            return result;
+        }
 
         terminal::WriteLine("Hello World!");
 
-        auto hookCtx = hooks::CreateTrampolineHook(
-            systemTable->ConsoleOut->ClearScreen,
-            Hook,
-            reinterpret_cast<void**>(&Orig)
-        );
-        systemTable->ConsoleOut->ClearScreen(systemTable->ConsoleOut);
+        auto text = fs::ReadFile("\\becca\\motd.txt");
+        terminal::WriteLine(text);
 
         terminal::WaitForAnyKey();
+
+        fs::Exit();
         terminal::Exit();
         return 0;
     }

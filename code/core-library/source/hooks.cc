@@ -22,32 +22,19 @@ namespace becca::hooks
     {
         auto targetArr = reinterpret_cast<u8*>(target);
 
-        efi::terminal::Write("Target @ ");
-        efi::terminal::WriteUnsigned(reinterpret_cast<usize>(target), true, 16);
-        efi::terminal::Write("Hook   @ ");
-        efi::terminal::WriteUnsigned(reinterpret_cast<usize>(hook), true, 16);
-
-        efi::terminal::WriteHexDump(target, 32);
-
         // Gets the length of x instructions where length >= the length of a jmp instruction
         usize overwrittenCodeSize = 0;
         while (overwrittenCodeSize < FarJmpTemplateSize)
         {
             auto currSize = assembly::GetInstructionLength(reinterpret_cast<void*>(targetArr + overwrittenCodeSize));
-            efi::terminal::Write("Found instruction of size ");
-            efi::terminal::WriteUnsigned(currSize, false, 10);
-            efi::terminal::Write(" @ ");
-            efi::terminal::WriteUnsigned(reinterpret_cast<usize>(targetArr + overwrittenCodeSize), true, 16);
-            overwrittenCodeSize += currSize;
-
             if (currSize == 0) break;
+
+            overwrittenCodeSize += currSize;
         }
 
         // Allocate space for trampoline
         auto trampolineSize = overwrittenCodeSize + FarJmpTemplateSize;
         auto trampolineBuffer = alloc::AllocateArray<u8>(trampolineSize);
-        efi::terminal::Write("Trampoline @ ");
-        efi::terminal::WriteUnsigned(reinterpret_cast<usize>(trampolineBuffer), true, 16);
 
         // Copy to be overwritten instructions to trampoline
         for (auto i = 0; i < overwrittenCodeSize; i++) trampolineBuffer[i] = targetArr[i];
@@ -59,8 +46,6 @@ namespace becca::hooks
         // Overwrite first instructions with our jmp instruction
         for (auto i = 0; i < FarJmpTemplateSize; i++) targetArr[i] = gFarJmpTemplate[i];
         *reinterpret_cast<void**>(targetArr + FarJmpTemplateAddressOffset) = hook;
-
-        efi::terminal::WriteHexDump(target, 32);
 
         *trampoline = trampolineBuffer;
         return nullptr;

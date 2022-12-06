@@ -40,6 +40,7 @@ namespace becca::efi::terminal
         gOut->SetMode(gOut, gSavedMode);
     }
 
+    // TODO: Move out of terminal, also used in fs
     // Writes an ascii string into a widestring buffer
     const char* WriteTo(const char* string, wchar_t* buffer, usize bufferSize)
     {
@@ -71,6 +72,8 @@ namespace becca::efi::terminal
 
     void Write(const char* string)
     {
+        if (string == nullptr) string = "(null)";
+
         wchar_t buffer[512];
         auto curr = string;
 
